@@ -1,0 +1,395 @@
+\documentclass{beamer}
+\usepackage[utf8]{inputenc}
+\usepackage{listings} % Include the listings-package
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{wrapfig}
+\usepackage{mathtools}
+\usepackage{spverbatim}
+
+\DeclarePairedDelimiter\abs{\lvert}{\rvert}%
+\DeclarePairedDelimiter\bra{\langle}{\rvert}
+\DeclarePairedDelimiter\ket{\lvert}{\rangle}
+\DeclarePairedDelimiterX\braket[2]{\langle}{\rangle}{#1 \delimsize\vert #2}
+
+\def\odiv{\, {\ominus\hspace{-8.5pt} \div} \,}
+\definecolor{unipi}{HTML}{294488}
+\usetheme{Boadilla}
+\setbeamercolor{normal text}{fg=unipi}
+
+\title{A process algebra for quantum processes}
+\author{Laura Bussi}
+\titlegraphic{\includegraphics[width=100pt,height=57pt]{marchio_unipi_pant541.png}}
+\date{14/06/2019}
+\institute[Università di Pisa]
+
+\begin{document}
+
+\frame{\titlepage}
+
+\begin{frame}
+\frametitle{Outline}
+\tableofcontents
+\end{frame}
+
+\section{Quantum information and security}
+ 
+\begin{frame}
+\frametitle{Quantum information}
+Quantum information is the information of the state of a quantum system. As classical information is represented by using bits, quantum information is epitomized by qubits. \\
+Bits and qubits fundamentally differ:
+\begin{itemize}
+	\item a classical bit can be only either 0 or 1;
+	\item a qubit can be in a state 0 or 1, or in a \emph{coherent superposition} of both;
+	\item coherence holds until the qubit is not measured: measurment of a qubit cause 
+	the immediate collapse of the qubit in one between the two states with a 
+	certain probability.
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{The Dirac notation}
+Standard representation of qubits relies on the Dirac notation, also known as bra-ket notation:
+\begin{itemize}
+	\item as we can choose an orthonormal basis of the linear vector space, we can write 
+	a coherent superposition as $\alpha \ket{0} + \beta \ket{1}$.
+	\item $\ket{0}$ and $\ket{1}$ are, respectevly, the two orthonormal vectors of 
+	the basis: 
+	\begin{align*}
+	\ket{0} = \begin{bmatrix}
+           1 \\
+           0 \\
+         \end{bmatrix}
+         & &
+    \ket{1} = \begin{bmatrix}
+    	   0 \\
+    	   1 \\
+    	 \end{bmatrix}
+    \end{align*}
+    \item $\alpha$ and $\beta$ can be in general complex numbers. Given the above state, 
+    we have that a measurment of that state will result in observing 0 with probability 
+    $\abs{\alpha^2}$ and 1 with probability $\abs{\beta^2}$. Obviously, it must hold 
+    $\abs{\alpha^2} + \abs{\beta^2} = 1$.
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Pure and mixed states}
+As said, a qubit in a \emph{pure state} is fully represented by a linear combination $\alpha \ket{0} + \beta \ket{1}$, i.e. a single ket vector in a Hilbert space. \\
+However, due to its nature, quantum states are difficult to isolate and might be entangled with the enviroment. Then we have to consider the so called \emph{mixed state}, i.e. a collection of pure states $\ket{\psi_i}$ each associated with a probability $p_i$. \\
+Again, it must hold $0 \leq p_i \leq 1$ and $\sum_i p_i = 1$. \\
+In order to handle quantum states which include mixed states, we introduce the \emph{density operator} (or \emph{density matrix}, denoted as $\rho$) representation:
+	\begin{align*}
+		\rho &= \sum_i p_i \ket{\psi_i}\bra{\psi_i}
+	\end{align*}
+\end{frame}
+
+\begin{frame}
+\frametitle{Operations on qubits and measurements}
+\emph{Quantum logic gates} are used to implement operations on qubits. Operations are performed over qubits in a pure state and include creation and removal of superposition (\emph{Hadamard operator}) and negation of a qubit w.r.t. the state of another qubit (\emph{Controlled-NOT}). The latter is a primary component in building a quantum computer.
+	\begin{align*}
+		H &= \frac{1}{\sqrt{2}}\begin{bmatrix}
+           1 & 1\\
+           1 & -1\\
+         \end{bmatrix}
+         & & &
+        CNOT &= \begin{bmatrix}
+           1 & 0 & 0 & 0\\
+           0 & 1 & 0 & 0\\
+           0 & 0 & 0 & 1\\
+           0 & 0 & 1 & 0\\
+         \end{bmatrix}
+	\end{align*}
+Measurment of a qubit is an irreversible operation. In particular, a measurment of a qubit whose state is entangled with another system will transform the pure state of the qubit in a mixed state. 
+\end{frame}
+
+\begin{frame}
+\frametitle{What about security?}
+Quantum computing is both a possibility and a threat:
+\begin{itemize}
+	\item fundamental theorems of quantum information states that qubits cannot be copied
+	nor broadcasted;
+	\item the BB84 key distribution protocol, that we're going to se later on,
+	exploits the fact that qubits cannot be measured without changing their
+	state.
+	\item On the other hand, the larger amount of information held by a single qubit
+	compared to a classical bit causes a sensible speedup in solving traditionally "hard"
+	problems, on which the security of many cryptographic protocols relies on.
+	\item Thus, dissemination of quantum computers may result in having no longer secure
+	 protocols.
+\end{itemize}
+\end{frame}
+
+\section{A process algebra for quantum systems: qCCS}
+
+\begin{frame}
+\frametitle{Towards a process algebra for quantum systems}
+As they involve quantum information, designing quantum protocols is surely error prone, even more than designing classical protocols. Having a formal language that can be used to design and verify quantum protocols plays a fundamental role in quantum security. \\
+Process algebras are expressive models for concurrent computation in classical computing. In the following we'll see an extension of CCS for handling quantum processes, called qCCS.
+\end{frame}
+
+\subsection{A probabilistic model for qCCS}
+
+\begin{frame}
+\frametitle{Probabilistic Labelled Transition Systems}
+As seen, quantum measurments give rise to probability distributions, thus it is quite natural to model the evolution of a quantum process by using pLTSs. \\
+We consider then a probabilty distribution over a set $S$:
+	\begin{align*}
+		\Delta : S \rightarrow [0,1] & & s.t. \ & \sum_s \Delta(s) = 1
+	\end{align*}
+The set $\lceil \Delta \rceil = \{ s \mid \Delta(s) > 0 \}$ is called the support of 
+$\Delta$. We call $\overline{s}$ a \emph{point distribution}, i.e. a distribution s.t. $\lceil \overline{s} \rceil = \{ s \}$. \\
+We denote as $Dist(S)$ the set of finite support distributions over S. \\
+Then, a pLTS is a triple $\langle S, Act_\tau, \rightarrow \rangle$ where $S$ is a set of states, $Act_\tau$ is a set of labels $Act \cup \{ \tau \}$ and $\rightarrow \subseteq S \times Act_\tau \times Dist(S)$.
+\end{frame}
+
+\begin{frame}
+\frametitle{Lifting the transition relation}
+Since we want to allow distributions over states to perform an action, we have to lift the relations $\xrightarrow\alpha$. \\
+Let $\mathcal{R} \subseteq S \times Dist(S)$ be a relation from states to distributions in a pLTS. Then $\mathcal{R}^\circ \subseteq Dist(S) \times Dist(S)$ is the smallest relation satisfying the following rules:
+	\begin{itemize}
+		\item $s \ \mathcal{R} \ \Delta \implies \overline{s} \ \mathcal{R}^\circ \ \Delta$
+		\item $\forall i \in I. \ \Theta_i \ \mathcal{R} \ \Delta_i \implies (\sum_{i \in I} p_i \Theta_i) \ \mathcal{R}^\circ \ (\sum_{i \in I} p_i \Delta_i)$, for $p_i \in [0,1]$, $\sum_{i \in I} p_i = 1$, where $I$ is a countable index set.
+	\end{itemize}
+For a weak transition $\xRightarrow{\overline{\alpha}}$ we write $\Delta \xRightarrow{\overline{\alpha}} \Theta$ whenever $\Delta \xRightarrow{\overline{\tau}} \xrightarrow\alpha \xRightarrow{\overline{\tau}} \Theta$.
+\end{frame}
+
+\subsection{qCCS: syntax}
+
+\begin{frame}
+\frametitle{Syntax of qCCS}
+Three types of data are considered:
+	\begin{itemize}
+		\item \emph{bool} for booleans;
+		\item \emph{real} for real numbers;
+		\item \emph{Qbt} for qubits.
+	\end{itemize}
+As a consequence, we have two infinite sets of variables:
+	\begin{itemize}
+		\item \emph{cVar} for classic variables;
+		\item \emph{qVar} for quantum variables.
+	\end{itemize}
+We also assume a set \emph{Exp} of expressions over real numbers and a set \emph{BExp} of expressions over booleans.
+\end{frame}
+
+\begin{frame}
+\frametitle{Syntax of qCCS}
+Of course, we need two types of channels:
+	\begin{itemize}
+		\item \emph{cChan} for classical channels, denoted as \emph{c, d}...
+		\item \emph{qChan} for quantum channels, denoted as \emph{\underline{c}, \underline{d}}... 
+	\end{itemize}
+A relabelling function \emph{f} is a map on $cChan \cup qChan$ such that $f(cChan) \subseteq cChan$ and $f(qChan) \subseteq qChan$. \\
+We write $\widetilde{q}$ for a sequence of distinct variables $q_1,...,q_n$.
+The terms in qCCS are generated by the following grammar: \\
+	\[ P, Q ::= nil \mid \tau.P \mid c?x.P \mid c!x.P \mid \underline{c}?x.P \mid \underline{c}!x.P \mid \mathcal{E}[\widetilde{q}].P \]
+	\[ \mid M[\widetilde{q};x].P \mid P + Q \mid P \lvert \rvert Q \mid P[f] \mid P \setminus L \mid if \ \bold{b} \ then \ P \mid A(\widetilde{q}; \widetilde{x}) \]
+\end{frame}
+
+\begin{frame}
+\frametitle{Free quantum variables}
+Free quantum variables are defined inductively:
+	\begin{align*}
+		qv(nil) = \emptyset && qv(\tau.P) = qv(P)\\
+		qv(c?x.P) = qv(P) && qv(c!e.P) = qv(P)\\
+		qv(\underline{c}?q.P) = qv(P) \setminus {q} && 
+		qv(\underline{c}!q.P) = qv(P) \cup {q}\\
+		qv(\mathcal{E}[\widetilde{q}].P) = qv(P) \cup \widetilde{q} &&
+		qv(M[\widetilde{q};x].P) = qv(P) \cup \widetilde{q}\\
+		qv(P + Q) = qv(P) \cup qv(Q) && qv(P \lvert \rvert Q) = qv(P) \cup qv(Q)\\
+		qv(P[f]) = qv(P) && qv(P \setminus L) = qv(P)\\
+		qv(if \ \bold{b} \ then \ P) = qv(P) &&
+		qv(A(\widetilde{q};\widetilde{x})) = \widetilde{q}		
+	\end{align*}
+For a process to be legal we require that:
+	\begin{itemize}
+		\item $q \not \in qv(P)$ in $\underline{c}!q.P$
+		\item $qv(P) \cap qv(Q) = \emptyset$ in $(P \lvert \rvert Q)$
+		\item Each constant $A(\widetilde{p};\widetilde{x})$ has a defining equation
+		$A(\widetilde{p};\widetilde{x}) = P$, where $P$ is a term with
+		$qv(P) \subseteq \widetilde{p} = \emptyset$ and $fv(P) \subseteq \widetilde{x}$
+	\end{itemize}
+\end{frame}
+
+\subsection{qCCS: semantics}
+
+\begin{frame}
+\frametitle{Informal semantics of qCCS}
+Since qCCS is an extension of value-passing CCS, classical operators behaves as expected. \\
+As for the process $\underline{c}?q.P$, it receives a quantum datum over the quantum channel $\underline{c}$ and evolves into $P$, while $\underline{c}!q.P$ sends a quantum datum over the quantum channel $\underline{c}$ and evolves into $P$. \\
+$\mathcal{E}$ represents a trace-preserving super-operator, i.e. a local quantum operation acting on a mixed state, applied to $\widetilde{q}$. The set of all the trace-preserving super-operators is denoted as $TSO_H$, for $H$ being a (finite dimensional) Hilbert 
+space. \\
+The process $M[\overline{q};x].P$ measures the states of the sequence $\overline{q}$ and stores the result into the classical variable $x$. \\
+\end{frame}
+ 
+\begin{frame}
+\frametitle{Operational semantics of qCCS}
+\center \includegraphics[width=300pt,height=200pt]{Op_semantics.png}
+\end{frame}
+
+\subsection{qCCS: weak bisimulation}
+
+\begin{frame}
+\frametitle{Equivalence for quantum processes}
+Given a process $P$ and a density operator $\rho$, a configuration is a pair $(P, \rho)$. \\
+In order to define equivalence between two processes, we define three criteria:
+	\begin{itemize}
+		\item \emph{Barb-preservation} holds when two processes have the same probability
+		to send out values on classical channels.
+		\item \emph{Reduction-closure} ensures that non-deterministic choices are in some
+		sense preserved.
+		\item \emph{Compositionality} holds if $C \ \mathcal{R} \ D \implies 
+		(C \lvert \rvert R) \ \mathcal{R} \ (D \lvert \rvert R)$, with 
+		$qv(R) \cap (qv(C) \cup qv(D)) = \emptyset$ and $\mathcal{R}$ closed under
+		trace-preserving operators.
+	\end{itemize}
+A reduction barbed congruence ($\approx_r$) is the largest relation over configurations which is barb-preserving, reduction-closed and compositional. Furthermore, we have that $C \approx_r D \implies qv(C) = qv(D)$ and $env(C) = env(D)$.
+\end{frame}
+
+\begin{frame}
+\frametitle{Open bisimulation}
+Checking for equivalence using the above definition is quite difficult. \\
+We define a relation (called \emph{open bisimulation}) which can be used to characterize reduction barbed congruence. \\
+A relation $\mathcal{R} \subseteq Con \times Con$ is an open bisimulation if
+	\begin{itemize}
+		\item $C \mathcal{R} D \implies qv(C) = qv(D), env(C) = env(D)$ and, for any
+		trace-preserving operator $\mathcal{E}$ we have that whenever $\mathcal{E}(C)
+		\xrightarrow\alpha \Delta$ there is some $\Theta$ with $\mathcal{E}(D)
+		\xRightarrow{\overline{\alpha}} \Theta$ and $\Delta \ \mathcal{R}^\circ \ \Theta$.
+		\item Both $\mathcal{R}$ and $\mathcal{R}^{-1}$ are open bisimulation.
+	\end{itemize}
+We denote as $\approx_o$ the largest open bisimulation. Two quantum processes $P$ and $Q$ are bisimilar ($P \approx_o Q$) if, for any quantum state $\rho$ and any indexed set of classical values $\widetilde{v}$ we have 
+$\langle P\{\widetilde{v} / \widetilde{x}\}, \rho \rangle \approx_o 
+\langle Q\{\widetilde{v} / \widetilde{x}\}, \rho \rangle$.
+\end{frame}
+
+\begin{frame}
+\frametitle{Ground bisimulation}
+In order to simplify the proof of bisimilarity, we can separate the issues to consider 
+$TSOs$ and transitions. We define then a new relation. \\
+A relation $\mathcal{R} \subseteq Con \times Con$ is a \emph{ground bisimulation} if
+	\begin{itemize}
+		\item $C \ \mathcal{R} \ D \implies qv(C) = qv(R), env(C) = env(R)$ and whenever 
+		$C \xrightarrow\alpha \Delta$ there is some distrubution $\Theta$ with
+		$D \xRightarrow{\overline{\alpha}} \Theta$ and $\Delta \ \mathcal{R}^\circ \ 
+		\Theta$.
+		\item Both $\mathcal{R}$ and $\mathcal{R}^{-1}$ are ground bisimulation.
+	\end{itemize}
+If $\mathcal{R}$ is a ground bisimulation and it is closed under super-operators, then $\mathcal{R}$ is an open bisimulation. The relation $\approx_o$ is the largest ground bisimulation which is closed under $TSOs$. \\
+Furhtermore, $\approx_o$ is preserved by all the constructor of qCCS except for summation.
+\end{frame}
+
+\section{Protocols verification: BB84}
+
+\begin{frame}
+\frametitle{BB84: informal description}
+BB84 was developed by Bennet and Brassard in 1984. It provides a provable secure way to create and share a private key between two parts (Alice and Bob in the following). \\
+The basic protocol is defined as follows:
+	\begin{itemize}
+		\item[1] Alice randomly generates two strings of bits $\widetilde{B}_a$ and 
+		$\widetilde{K}_a$, each of size $n$.
+		\item[2] Alice prepares a string $\widetilde{q}$ of size $n$ and sends it to Bob.
+		\item[3] Bob randomly generates a string of bits $\widetilde{B}_b$ of size $n$.
+		\item[4] Bob measures $\widetilde{q}$ according to the basis determined by the
+		string of bits he generated. Let the result be $\widetilde{K}_b$.
+		\item[5] Bob sends his measurement choice $\widetilde{B}_b$ to Alice, while Alice
+		sends $\widetilde{B}_a$ to Bob.
+		\item[6] Alice and Bob determine which bits in $\widetilde{B}_a$ and 
+		$\widetilde{B}_b$ are equal and discard the bits in $\widetilde{K}_a$ and
+		$\widetilde{K}_b$ where the corresponding bits of $\widetilde{B}_a$ and 
+		$\widetilde{B}_b$ differ.
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{BB84: formalisation}
+Using qCCS, we can formalise BB84 as follows:
+\[ Alice = Ran[\widetilde{q};\widetilde{B}_a].Ran[\widetilde{q};\widetilde{K}_a].Set_{\widetilde{K}_a}[\widetilde{q}].H_{\widetilde{B}_a}[\widetilde{q}].A2B!\widetilde{q}.WaitA(\widetilde{B}_a,\widetilde{K}_a) \]
+\[ Wait(\widetilde{B}_a,\widetilde{K}_a) = a2b?\widetilde{B}_b.a2b!\widetilde{B}_a.key_a!cmp(\widetilde{K}_a,\widetilde{B}_a,\widetilde{B}_b).nil \]
+
+\[ Bob = A2B?\widetilde{q}.Ran[\widetilde{q}';\widetilde{B}_b].M_{\widetilde{B}_b}[\widetilde{q};\widetilde{K}_b].b2a!\widetilde{B}_b.Wait(\widetilde{B}_b,\widetilde{K}_b) \]
+\[ Wait(\widetilde{B}_b,\widetilde{K}_b) = a2b?\widetilde{B}_a.key_b!cmp(\widetilde{K}_a,\widetilde{B}_a,\widetilde{B}_b).nil \]
+
+\[ BB84 = (Alice \lvert \rvert Bob) \backslash \{a2b,b2a,A2B\} \]
+\end{frame}
+
+\begin{frame}
+\frametitle{BB84: correctness}
+To show the correctness of BB84, we let:
+\[ BB84_{spe} = Ran[\widetilde{q};\widetilde{B}_a].Ran[\widetilde{q};\widetilde{K}_a].Ran[\widetilde{q}';\widetilde{B}_b]. \] 
+\[(key_a!cmp(\widetilde{K}_a,\widetilde{B}_a,\widetilde{B}_b).nil \lvert \rvert key_b!cmp(\widetilde{K}_a,\widetilde{B}_a,\widetilde{B}_b).nil)\]
+It can be checked from the pLTS that $BB84 \approx_o BB84_{spe}$, here for the case $n = 2$:
+\center \includegraphics[width=220pt,height=110pt]{plts.png}
+\end{frame}
+
+\begin{frame}
+\frametitle{BB84 vs Eve}
+To test security of BB84, we can take into account an eavesdropper (named Eve) who tries a typical man-in-the-middle attack.
+\[ Alice' = (Alice \lvert \rvert key_a?\widetilde{K}_a'.Pstr_{\widetilde{K}_a'}[\widetilde{q};\widetilde{x}].a2b!\widetilde{x}.a2b!SubStr(\widetilde{K}_a',\widetilde{x}).b2a?\widetilde{K}_b''.\] 
+\[(if \ SubStr(\widetilde{K}_a',\widetilde{x}) = \widetilde{K}_b'' \ then \ key_a'!RemStr(\widetilde{K}_a',\widetilde{x}) \ else \ alarm_a!0.nil)) \backslash \{key_a\} \]
+
+\[ Bob' = (Bob \lvert \rvert key_b?\widetilde{K}_b'.a2b?\widetilde{x}.a2b?\widetilde{K}_a''.b2a!SubStr(\widetilde{K}_b',\widetilde{x}). \]
+\[ (if \ SubStr(\widetilde{K}_b',\widetilde{x}) = \widetilde{K}_a'' \ then \ key_b'!RemStr(\widetilde{K}_b',\widetilde{x}) \ else \ alarm_b!0.nil)) \backslash \{key_b\} \]
+
+\[ Eve = A2E?\widetilde{q}.Ran[\widetilde{q}'',\widetilde{B}_e].M_b[\widetilde{q};\widetilde{K}_e].Set_{\widetilde{K}_e}[\widetilde{q}].H_{\widetilde{B}_e}[\widetilde{q}].E2B!\widetilde{q}.key_e'!\widetilde{K}_e\]
+\end{frame}
+
+\begin{frame}
+\frametitle{Testing BB84 in a malicious environment}
+Now the system must include Eve (with $f_a (A2B) = A2E$ and $f_b (A2B) = E2B$):
+\[ BB84_E = ( Alice'[f_a] \lvert \rvert Eve \lvert \rvert Bob'[f_b] ) \backslash \{a2b, b2a, A2E, E2B \}\]
+The test is defined as follows:
+\[ TestBB84 = (BB84_E \lvert \rvert key_a'?\widetilde{x}.key_b'?\widetilde{y}.key_e'?\widetilde{z}.\]
+\[(if \ \widetilde{x} \not = \widetilde{y} \ then \ fail!0.nil \ else \ key_e!\widetilde{z}.skey!\widetilde{x}.nil)) \backslash \{key_a', key_b', key_e'\}\]
+\end{frame}
+
+\begin{frame}
+\frametitle{Open bisimulation, again}
+Proving the security of BB84 is in general very hard. \\
+Again, open bisimulation can help to simplify the test. Indeed we can define a simpler test:
+\[ TB = Ran[\widetilde{q};\widetilde{B}_a].Ran[\widetilde{q};\widetilde{K}_a].Ran[\widetilde{q}'';\widetilde{B}_e].Ran'_{\widetilde{B}_a,\widetilde{B}_e,\widetilde{K}_a}[\widetilde{q};\widetilde{K}_e].Ran[\widetilde{q}';\widetilde{B}_b].\]
+\[ Ran'_{\widetilde{B}_e,\widetilde{B}_b,\widetilde{K}_e}[\widetilde{q};\widetilde{K}_b].Pstr_{\widetilde{K}_{ab}}[\widetilde{q}_a;\widetilde{x}].(if \ \widetilde{K}_{ab} = \widetilde{K}_{ab} \ then \]
+\[ key_e!\widetilde{K}_e.skey!RemStr(\widetilde{K}_{ab},\widetilde{x}) \ else \]
+\[ (if \ \widetilde{K}_{ab} \not = \widetilde{K}_{ab} \ then \ (alarm_a!0.nil \lvert \rvert alarm_b!0.nil) \ else \ fail!0.nil)) \]
+We have that $TB \approx_o TestBB84$: proving correctness of $TB$ suffices then to prove security of BB84 against Eve's attack.
+\end{frame}
+
+\section{Related works}
+
+\begin{frame}
+\frametitle{Related works}
+QCCS is not the only available process algebra for quantum systems. \\
+\smallskip
+A first definition was provided by Marie Lalire and Philippe Jorrand in their 2004 paper, presenting QPAlg. \\
+QPAlg, as qCCS, is inspired by CCS. It provides rules for applying unitary quantum operators, measurments and the ability to send and receive qubits. Equivalence between QPAlg processes is obtained defining \emph{probabilistic branching bisimilarity}; however, such a bisimilarity is shown to be preserved by all operators except for parallel composition. \\ \smallskip
+Another process algebra has been introduced in 2004 by Simon Gay and Rajagopal Nagarajan.
+Unlike QPAlg and qCCS, CQP is inspired by $\pi$-Calculus. The operational semantics is defined by using reductions, under the assumption that no external communication involving qubits happen. This limits name mobility to classical channels.
+\end{frame}
+
+\section{Conclusions and future works}
+
+\begin{frame}
+\frametitle{Conclusions and future works}
+Quantum computing is probably going to play a fundamental role in the future of security. Adapting reduction barbed congruence to quantum processes and separating super-operator applications from transitions results in having a quite simple technique to prove behavioural equivalence of processes, which can be used to prove security properties. \\
+A simplified version of qCCS supports a semi-automated verification tool, introduced in 2016 by Feng et al. \\
+The application of a sequential quantum programming language, as for instance QPL, to verify equations in such a tool is a possible future work. \\
+More in general, an interesting evolution could be providing name mobility for quantum processes, taking the existing quantum process algebras as a starting point.
+\end{frame}
+
+\section{References}
+
+\begin{frame}
+\frametitle{References}
+\begin{itemize}
+	\item https://en.wikipedia.org/wiki/Quantum$\_$information
+	\item Michael A. Nielsen, Isaac L. Chuang - Quantum Computing and Quantum Information
+	\item Ittoop V. Puthoor - Theory and Applications of Quantum Process Calculus
+	\item Simon Gay, Rajagopal Nagarajan - Communicating Quantum Processes
+	\item Marie Lalire, Philippe Jorrand - A Process Algebraic Approach to Concurrent and
+	Distributed Quantum Computation: Operational Semantics
+	\item Yuxin Deng, Yuan Feng - Open Bisimulation for Quantum Processes
+\end{itemize}
+\end{frame}
+
+\end{document}
